@@ -36,6 +36,8 @@ public:
         GeneticTreeItem *child2;
         qreal constant;
 
+        GeneticTreeItem();
+        ~GeneticTreeItem();
         GeneticTreeItem& operator=(const GeneticTreeItem &source);
     };
 
@@ -52,6 +54,9 @@ public:
     cv::Mat matrix;
     cv::Mat output;
     QTreeWidgetItem topUiItem;
+    QStringList typeStrings;
+    void listOfChildren(QList<const GeneticTree::GeneticTreeItem *> &list, const GeneticTreeItem* parent);
+    QList<const GeneticTree::GeneticTreeItem *> listOfChildren();
 
     GeneticTree& operator=(const GeneticTree &source);
 private:
@@ -59,13 +64,14 @@ private:
     void matrixOperation(qreal constant, GeneticTreeItem::Operations operation, bool reverseOrder = true);
     void bitwiseOperation(GeneticTreeItem::Operations operation, bool reverseOrder = true);
     void randomChildren(GeneticTreeItem * parent);
-    void evaluateChildren(GeneticTreeItem const * parent);
+    void evaluateChildren(GeneticTreeItem * const parent);
     void uiChildren(GeneticTreeItem const * parent, QTreeWidgetItem * uiParent);
     QString typeToString(GeneticTreeItem::Type type);
     QString operatorToString(GeneticTree::GeneticTreeItem::Operations operation);
-    GeneticTreeItem *getRandomChildOfTree(const GeneticTree *tree, int type = -1);
-    void listOfChildren(QList<const GeneticTree::GeneticTreeItem *> &list, const GeneticTreeItem* parent);
+    GeneticTreeItem *getRandomChildOfTree(GeneticTree * const tree, int type = -1);
+
     void removeTypeFromList(QList<const GeneticTreeItem *> &list, GeneticTreeItem::Type type);
+    void removeTopItemsFromList(QList<const GeneticTreeItem *> &list);
 };
 
 #endif // GENETICTREE_H

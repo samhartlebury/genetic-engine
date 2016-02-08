@@ -5,9 +5,9 @@
 
 GeneticTree::GeneticTree(QObject *parent) :
     QObject(parent),
-    maxInitialDepth(2)
+    maxInitialDepth(100)
 {
-
+    typeStrings << "Operator" << "Matrix" << "Constant" << "Undefined";
 }
 
 void GeneticTree::generateTree()
@@ -17,7 +17,11 @@ void GeneticTree::generateTree()
     topItem.type = GeneticTreeItem::Operator;
     topItem.operation = GeneticTreeItem::Operations(qrand() % 4);
     topItem.depth = 0;
+
     randomChildren(&topItem);
+
+    if (topItem.child1->type != GeneticTreeItem::Operator)
+        Q_ASSERT(topItem.child1->type != topItem.child2->type);
 }
 
 int GeneticTree::depthOfTree()
@@ -31,16 +35,22 @@ int GeneticTree::depthOfTree()
 
 void GeneticTree::depth(const GeneticTreeItem *parent, int * const initialisedDepth)
 {
+    if (!initialisedDepth)
+        return;
     if (!parent)
         return;
-    if (!parent->type)
+    if (parent->type < 0 || parent->type > 2)
         return;
-    if (typeToString(parent->type) == "Undefined")
+
+    if (*initialisedDepth > 100) {
         return;
+    }
 
     *initialisedDepth = *initialisedDepth + 1;
 
     if (parent->type != GeneticTreeItem::Operator)
+        return;
+    if (parent->child1 == 0 || parent->child2 == 0)
         return;
 
     auto* child1 = parent->child1;
@@ -64,8 +74,12 @@ QTreeWidgetItem *GeneticTree::generateUITree()
 
 cv::Mat GeneticTree::evaluateTree()
 {
+    Q_ASSERT(topItem.child1 && topItem.child2);
     evaluateChildren(&topItem);
-    return output;
+
+    Q_ASSERT(output.cols);
+
+    return output.clone();
 }
 
 void GeneticTree::setMatrix(const QString &filePath)
@@ -84,6 +98,25 @@ void GeneticTree::setMatrix(cv::Mat input)
     output.convertTo(output, CV_32F);
 }
 
+void GeneticTree::listOfChildren(QList<const GeneticTree::GeneticTreeItem*> &list, const GeneticTreeItem* parent)
+{
+    list.append(parent);
+
+    if (parent->type != GeneticTreeItem::Operator)
+        return;
+
+    listOfChildren(list, parent->child1);
+    listOfChildren(list, parent->child2);
+}
+
+QList<const GeneticTree::GeneticTreeItem *> GeneticTree::listOfChildren()
+{
+    QList<const GeneticTree::GeneticTreeItem *> childList;
+    listOfChildren(childList, &topItem);
+
+    return childList;
+}
+
 GeneticTree &GeneticTree::operator=(const GeneticTree &source)
 {
     // Check for self-assignment
@@ -98,6 +131,18 @@ GeneticTree &GeneticTree::operator=(const GeneticTree &source)
     topUiItem = source.topUiItem;
 
     return *this;
+}
+
+GeneticTree::GeneticTreeItem::GeneticTreeItem() :
+    child1(0),
+    child2(0)
+{
+}
+
+GeneticTree::GeneticTreeItem::~GeneticTreeItem()
+{
+    delete child1;
+    delete child2;
 }
 
 GeneticTree::GeneticTreeItem &GeneticTree::GeneticTreeItem::operator=(const GeneticTree::GeneticTreeItem &source)
@@ -122,9 +167,9 @@ GeneticTree::GeneticTreeItem &GeneticTree::GeneticTreeItem::operator=(const Gene
     if (source.child1 && source.child2) {
         // Allocate memory and copy
         child1 = new GeneticTreeItem;
-        child1 = source.child1;
+        *child1 = *(source.child1);
         child2 = new GeneticTreeItem;
-        child2 = source.child2;
+        *child2 = *(source.child2);
     } else {
         child1 = 0;
         child2 = 0;
@@ -133,11 +178,22 @@ GeneticTree::GeneticTreeItem &GeneticTree::GeneticTreeItem::operator=(const Gene
     return *this;
 }
 
-GeneticTree* GeneticTree::breedWithTree(GeneticTree  * const tree)
+GeneticTree* GeneticTree::breedWithTree(GeneticTree * const tree)
 {
+    if (tree->topItem.child1->type != GeneticTreeItem::Operator)
+        Q_ASSERT(tree->topItem.child1->type != tree->topItem.child2->type);
+
     GeneticTree *child = new GeneticTree;
-    child->topItem = tree->topItem;
+    *child = *tree;
     child->matrix = tree->matrix.clone();
+    child->output = child->matrix.clone();
+
+    if (tree == this)
+        return child;
+
+    if (tree->depthOfTree() < 4 || this->depthOfTree() < 4)
+        return child;
+
     GeneticTreeItem *randomChildOfChild = getRandomChildOfTree(child);
     GeneticTreeItem *randomChildOfThis = getRandomChildOfTree(this, randomChildOfChild->type);
 
@@ -147,17 +203,23 @@ GeneticTree* GeneticTree::breedWithTree(GeneticTree  * const tree)
     return child;
 }
 
-GeneticTree::GeneticTreeItem* GeneticTree::getRandomChildOfTree(GeneticTree const * tree, int type)
+GeneticTree::GeneticTreeItem* GeneticTree::getRandomChildOfTree(GeneticTree * const tree, int type)
 {
     QList<const GeneticTreeItem*> childList;
 
     listOfChildren(childList, &tree->topItem);
+    removeTopItemsFromList(childList);
 
-    //GeneticTreeItem::Type itemType = static_cast<GeneticTreeItem::Type>(type);
-
-    // For now, only allow operator swapping
-    removeTypeFromList(childList, GeneticTreeItem::Constant);
-    removeTypeFromList(childList, GeneticTreeItem::Matrix);
+    if (tree->depthOfTree() > 2) {
+        //GeneticTreeItem::Type itemType = static_cast<GeneticTreeItem::Type>(type);
+        // For now, only allow operator swapping
+        removeTypeFromList(childList, GeneticTreeItem::Constant);
+        removeTypeFromList(childList, GeneticTreeItem::Matrix);
+    } else if (type == GeneticTreeItem::Constant) {
+        removeTypeFromList(childList, GeneticTreeItem::Matrix);
+    } else if (type == GeneticTreeItem::Matrix) {
+        removeTypeFromList(childList, GeneticTreeItem::Constant);
+    }
 
     if (childList.size() == 0)
         Q_ASSERT(false);
@@ -165,6 +227,16 @@ GeneticTree::GeneticTreeItem* GeneticTree::getRandomChildOfTree(GeneticTree cons
     int randomNum = (qrand() % childList.size());
 
     return const_cast<GeneticTreeItem*>(childList[randomNum]);
+}
+
+void GeneticTree::removeTopItemsFromList(QList<const GeneticTreeItem*> &list)
+{
+    QMutableListIterator<const GeneticTreeItem*> i(list);
+    while (i.hasNext()) {
+        const auto& item = i.next();
+        if (item->depth == 1)
+            i.remove();
+    }
 }
 
 void GeneticTree::removeTypeFromList(QList<const GeneticTreeItem*> &list, GeneticTreeItem::Type type)
@@ -177,21 +249,13 @@ void GeneticTree::removeTypeFromList(QList<const GeneticTreeItem*> &list, Geneti
     }
 }
 
-void GeneticTree::listOfChildren(QList<const GeneticTree::GeneticTreeItem*> &list, const GeneticTreeItem* parent)
+void GeneticTree::evaluateChildren(GeneticTreeItem * const parent)
 {
-    list.append(parent);
-
+    // Q_ASSERT(parent);
     if (parent->type != GeneticTreeItem::Operator)
         return;
 
-    listOfChildren(list, parent->child1);
-    listOfChildren(list, parent->child2);
-}
-
-void GeneticTree::evaluateChildren(GeneticTreeItem const * parent)
-{
-    if (parent->type != GeneticTreeItem::Operator)
-        return;
+    Q_ASSERT(parent->child1 && parent->child2);
 
     evaluateChildren(parent->child1);
     evaluateChildren(parent->child2);
@@ -208,7 +272,6 @@ void GeneticTree::evaluateChildren(GeneticTreeItem const * parent)
         bitwiseOperation(parent->operation, true);
     else if (parent->child1->type == GeneticTreeItem::Operator && parent->child2->type == GeneticTreeItem::Matrix)
         bitwiseOperation(parent->operation, false);
-
     return;
 }
 
@@ -235,11 +298,12 @@ void GeneticTree::uiChildren(GeneticTree::GeneticTreeItem const * parent, QTreeW
 
 QString GeneticTree::typeToString(GeneticTree::GeneticTreeItem::Type type)
 {
+
     switch (type) {
-    case GeneticTreeItem::Operator: return "Operator";
-    case GeneticTreeItem::Matrix: return "Matrix";
-    case GeneticTreeItem::Constant: return "Constant";
-    default: return "Undefined";
+    case GeneticTreeItem::Operator: return typeStrings.at(0);
+    case GeneticTreeItem::Matrix: return typeStrings.at(1);
+    case GeneticTreeItem::Constant: return typeStrings.at(2);
+    default: return typeStrings.at(3);
     }
 }
 
@@ -323,8 +387,8 @@ void GeneticTree::bitwiseOperation(GeneticTree::GeneticTreeItem::Operations oper
 {
     switch (static_cast<GeneticTreeItem::Operations>(operation)) {
     case GeneticTreeItem::Add: output = output + matrix; return;
-    case GeneticTreeItem::Divide: reverseOrder ? output = output / matrix : output = matrix / output; return;
-    case GeneticTreeItem::Multiply: output = matrix * output; return;
+    case GeneticTreeItem::Divide: reverseOrder ? cv::divide(output, matrix, output) : cv::divide(matrix, output, output); return;
+    case GeneticTreeItem::Multiply: cv::multiply(output, matrix, output); return;
     case GeneticTreeItem::Subtract: reverseOrder ? output = output - matrix : output = matrix - output; return;
     default: Q_ASSERT(false);
     }

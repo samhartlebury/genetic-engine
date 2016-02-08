@@ -4,12 +4,20 @@
 #include <QThread>
 #include <qmath.h>
 
-GeneticProgram::GeneticProgram(QObject *parent) : QObject(parent)
+GeneticProgram::GeneticProgram(QObject *parent) :
+    QObject(parent),
+    maxDepth(100)
 {
     for (int i = 0; i < 3; ++i) {
-        GeneticTree *tree = new GeneticTree(this);
+        GeneticTree *tree = new GeneticTree;
+        tree->maxInitialDepth = 100;
         m_genome.append(tree);
     }
+}
+
+GeneticProgram::~GeneticProgram()
+{
+    qDeleteAll(m_genome);
 }
 
 bool GeneticProgram::setMatrix(cv::Mat matrix)
@@ -20,15 +28,21 @@ bool GeneticProgram::setMatrix(cv::Mat matrix)
     split(matrix, m_matrix);
 
     for (int i = 0; i < 3; ++i)
-        m_genome[i]->setMatrix(m_matrix[i]);
+        m_genome[i]->setMatrix(m_matrix[i].clone());
 
     return true;
+}
+
+void GeneticProgram::setMaxInitialDepth(uint depth)
+{
+    maxDepth = depth;
 }
 
 bool GeneticProgram::generateGenome()
 {
     for (const auto& tree : m_genome) {
         QThread::msleep(1);
+        tree->maxInitialDepth = maxDepth;
         tree->generateTree();
     }
 
@@ -41,8 +55,11 @@ GeneticProgram* GeneticProgram::breedWithProgram(GeneticProgram  * const program
 
     for (int i = 0; i < 3; ++i) {
         child->m_matrix[i] = m_matrix[i].clone();
-        *(child->m_genome[i]) = *(m_genome[i]->breedWithTree(program->m_genome[i]));
+        GeneticTree *baby = m_genome[i]->breedWithTree(program->m_genome[i]);
+        *(child->m_genome[i]) = *(baby);
+         delete baby;
     }
+
 
     return child;
 }
@@ -51,10 +68,15 @@ cv::Mat GeneticProgram::evaluate()
 {
     cv::Mat bgr[3];
 
-    for (int i = 0; i < 3; ++i)
-        bgr[i] = m_genome[i]->evaluateTree();
+    Q_ASSERT(m_genome[0] && m_genome[1] && m_genome[2]);
+
+    for (int i = 0; i < 3; ++i) {
+        cv::Mat debugger = m_genome[i]->evaluateTree();
+        bgr[i] = debugger;
+    }
 
     cv::Mat output;
+    Q_ASSERT(bgr[0].cols);
     cv::merge(bgr, 3, output);
 
     return output;
@@ -101,7 +123,7 @@ GeneticProgram &GeneticProgram::operator=(const GeneticProgram &source)
     }
 
 
-   // m_genome = source.m_genome;
+    // m_genome = source.m_genome;
 
     return *this;
 
