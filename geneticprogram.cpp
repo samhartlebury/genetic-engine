@@ -56,11 +56,13 @@ GeneticProgram* GeneticProgram::breedWithProgram(GeneticProgram  * const program
     for (int i = 0; i < 3; ++i) {
         child->m_matrix[i] = m_matrix[i].clone();
         GeneticTree *baby = m_genome[i]->breedWithTree(program->m_genome[i]);
-        if ((!(qrand() % 3)) && (baby->depthOfTree() > 3)) // Temporary mutation rate (3%)
-            baby->mutateRandomChild(baby);
+        if (!(qrand() % 5)) {// Temporary mutation rate (20%)
+                baby->mutateRandomChild(baby);
+
+        }
 
         *(child->m_genome[i]) = *(baby);
-         delete baby;
+        delete baby;
     }
 
 

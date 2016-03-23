@@ -235,7 +235,17 @@ void GeneticTree::removeTopItemsFromList(QList<const GeneticTreeItem*> &list)
 
 void GeneticTree::mutateRandomChild(GeneticTree * const tree)
 {
-    GeneticTreeItem *child = getRandomChildOfTree(tree);
+    GeneticTreeItem *child;
+    if (tree->depthOfTree() < 4) {
+        return;
+//        if (qrand() % 2)
+//            child = tree->topItem.child1;
+//        else
+//            child = tree->topItem.child2;
+    } else {
+        child = getRandomChildOfTree(tree);
+    }
+
 
     child->type = GeneticTreeItem::Operator; // For now, just mutate as operator
     child->operation = GeneticTreeItem::Operations(qrand() % 4); // Choose random operation

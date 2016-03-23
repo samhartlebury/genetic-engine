@@ -10,8 +10,8 @@ using namespace cv;
 
 GeneticEngine::GeneticEngine(int argc, char *argv[]) :
     QApplication(argc, argv),
-    population(500),
-    breedingPoolSize(50),
+    population(1000),
+    breedingPoolSize(200),
     generations(10),
     initialDepth(20)
 {
@@ -96,7 +96,7 @@ void GeneticEngine::nextGeneration()
         Mat diff;
         absdiff(target, output, diff);
         Scalar bgr = mean(diff);
-        qreal error = (bgr[0] + bgr[1] + bgr[2]) / 3;
+        qreal error = qMax(qMax(bgr[0], bgr[1]), bgr[2]);
         data->error = error;
         data->output = output;
 
