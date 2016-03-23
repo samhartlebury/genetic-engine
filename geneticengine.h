@@ -47,6 +47,8 @@ public:
     QList<GeneticData*> bestList;
     QList<GeneticData*> newBestList;
 
+    void analyse();
+
 public slots:
     void start();
 };

@@ -10,9 +10,9 @@ using namespace cv;
 
 GeneticEngine::GeneticEngine(int argc, char *argv[]) :
     QApplication(argc, argv),
-    population(1000),
-    breedingPoolSize(200),
-    generations(10),
+    population(200),
+    breedingPoolSize(100),
+    generations(50),
     initialDepth(20)
 {
     Q_UNUSED(argc);
@@ -30,7 +30,6 @@ void GeneticEngine::firstGeneration()
     qsrand(QDateTime::currentDateTime().toMSecsSinceEpoch());
 
     for (int i = 0; i < population; ++i) {
-
 
         processEvents();
 
@@ -78,6 +77,8 @@ void GeneticEngine::nextGeneration()
 
 
     for (int i = 0; i < population; ++i) {
+
+        processEvents();
 
         int thisElement = i % breedingPoolSize;
         int randomElement = (qrand()) % breedingPoolSize;
@@ -134,10 +135,52 @@ void GeneticEngine::medianError()
     }
 }
 
+void GeneticEngine::analyse()
+{
+    Mat best = bestList.at(0)->output;
+    best.convertTo(best, CV_8U);
+    imshow("best", best);
+    auto bestProgram = bestList.at(0)->program;
+    unsigned char rdata[256];
+    unsigned char gdata[256];
+    unsigned char bdata[256];
+
+    Mat rOut(256, 256, CV_8UC1, 1);
+    Mat gOut(256, 256, CV_8UC1, 1);
+    Mat bOut(256, 256, CV_8UC1, 1);
+
+    for (int i = 0; i < 256; ++i) {
+        Mat test(4, 4, CV_8UC3, Scalar(i, i, i));
+        bestProgram->setMatrix(test);
+        Mat out = bestProgram->evaluate();
+        out.convertTo(out, CV_8U);
+
+        bdata[i] = out.at<Vec3b>(Point(0, 0))[0];
+        gdata[i] = out.at<Vec3b>(Point(0, 0))[1];
+        rdata[i] = out.at<Vec3b>(Point(0, 0))[2];
+
+        rOut.at<uchar>(Point(i, 255 - rdata[i])) = 255;
+        gOut.at<uchar>(Point(i, 255 - gdata[i])) = 255;
+        bOut.at<uchar>(Point(i, 255 - bdata[i])) = 255;
+    }
+
+
+    Mat test(256, 256, CV_8UC3);
+    Mat bgr[3];
+    split(test, bgr);
+    bgr[0] = bOut;
+    bgr[1] = gOut;
+    bgr[2] = rOut;
+    merge(bgr, 3, test);
+
+    imshow("RGB responses", test);
+    bestProgram->setMatrix(input);
+}
+
 void GeneticEngine::start()
 {
-    Mat preInput = imread("/home/sam/Pictures/test3.png",CV_LOAD_IMAGE_COLOR);
-    Mat preTarget = imread("/home/sam/Pictures/test2.png", CV_LOAD_IMAGE_COLOR);
+    Mat preInput = imread("/home/sam/Pictures/test2.png",CV_LOAD_IMAGE_COLOR);
+    Mat preTarget = imread("/home/sam/Pictures/test3.png", CV_LOAD_IMAGE_COLOR);
 
     int divider = 4;
 
@@ -155,6 +198,7 @@ void GeneticEngine::start()
         logger.writeCurrentData(1, bestList);
     }
     for (int i = 0; i < (generations - 1); ++i) {
+        analyse();
         nextGeneration();
         logger.writeCurrentData(i + 2, bestList);
     }
@@ -166,25 +210,34 @@ void GeneticEngine::start()
 
     Mat best = bestList.at(0)->output;
     best.convertTo(best, CV_8U);
-
     imshow("best", best);
-    imwrite( "/home/sam/Pictures/bestTest.png", best);
+   // imwrite( "/home/sam/Pictures/bestTest.png", best);
     processEvents();
 
     // Testing reconstruction
 
-    Mat newInput =  imread("/home/sam/Pictures/objects.png",CV_LOAD_IMAGE_COLOR);
-    resize(newInput, newInput, Size(preTarget.cols / divider, preTarget.rows / divider));
+//    Mat newInput =  imread("/home/sam/Pictures/objects.png",CV_LOAD_IMAGE_COLOR);
+//    resize(newInput, newInput, Size(preTarget.cols / divider, preTarget.rows / divider));
 
-    imshow("input with objects", newInput);
+//    imshow("input with objects", newInput);
 
     auto bestProgram = bestList.at(0)->program;
-    bestProgram->setMatrix(newInput);
-    Mat newBest = bestProgram->evaluate();
-    newBest.convertTo(newBest, CV_8U);
+    //bestProgram->setMatrix(newInput);
+//    Mat newBest = bestProgram->evaluate();
+//    newBest.convertTo(newBest, CV_8U);
 
-    imshow("output with objects", newBest);
-    imwrite( "/home/sam/Pictures/bestTestObjects.png", newBest);
+//    imshow("output with objects", newBest);
+    // imwrite( "/home/sam/Pictures/bestTestObjects.png", newBest);
+
+    // Testing output responses
+
+   analyse();
+
+//    imwrite("/home/sam/Desktop/test.png", test);
+//    imwrite("/home/sam/Desktop/redResponse.png", rOut);
+//    imwrite("/home/sam/Desktop/greenResponse.png", gOut);
+//    imwrite("/home/sam/Desktop/blueResponse.png", bOut);
+
 
 }
 
