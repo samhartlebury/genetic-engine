@@ -10,10 +10,10 @@ using namespace cv;
 
 GeneticEngine::GeneticEngine(int argc, char *argv[]) :
     QApplication(argc, argv),
-    population(1000),
-    breedingPoolSize(100),
-    generations(5),
-    initialDepth(8)
+    population(500),
+    breedingPoolSize(200),
+    generations(50),
+    initialDepth(20)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -90,8 +90,6 @@ void GeneticEngine::nextGeneration()
 
         Q_ASSERT(program1 && program2);
 
-
-
         GeneticData *data = new GeneticData;
         data->program = program1->breedWithProgram(program2);
         Mat output = data->program->evaluate();
@@ -138,8 +136,8 @@ void GeneticEngine::medianError()
 
 void GeneticEngine::start()
 {
-    Mat preInput = imread("/home/sam/Pictures/test2.png",CV_LOAD_IMAGE_COLOR);
-    Mat preTarget = imread("/home/sam/Pictures/blue.png", CV_LOAD_IMAGE_COLOR);
+    Mat preInput = imread("/home/sam/Pictures/test3.png",CV_LOAD_IMAGE_COLOR);
+    Mat preTarget = imread("/home/sam/Pictures/test2.png", CV_LOAD_IMAGE_COLOR);
 
     int divider = 4;
 
@@ -156,12 +154,8 @@ void GeneticEngine::start()
         nextGeneration();
 
 
-    qDebug() << endl << "Best errors:";
-
-    for (auto data : bestList) {
-        qDebug() << (data->error / 255) * 100;
-
-    }
+    qDebug() << endl << "Best error"
+             << endl << (bestList.at(0)->error / 255) * 100;
 
     medianError();
 
@@ -169,12 +163,12 @@ void GeneticEngine::start()
     best.convertTo(best, CV_8U);
 
     imshow("best", best);
-    imwrite( "/home/sam/Pictures/bestBlueRed.png", best);
+    imwrite( "/home/sam/Pictures/bestTest.png", best);
     processEvents();
 
     // Testing reconstruction
 
-    Mat newInput =  imread("/home/sam/Pictures/objectsRed.png",CV_LOAD_IMAGE_COLOR);
+    Mat newInput =  imread("/home/sam/Pictures/objects.png",CV_LOAD_IMAGE_COLOR);
     resize(newInput, newInput, Size(preTarget.cols / divider, preTarget.rows / divider));
 
     imshow("input with objects", newInput);
@@ -185,7 +179,7 @@ void GeneticEngine::start()
     newBest.convertTo(newBest, CV_8U);
 
     imshow("output with objects", newBest);
-    imwrite( "/home/sam/Pictures/newBestBlueRed.png", newBest);
+    imwrite( "/home/sam/Pictures/bestTestObjects.png", newBest);
 
 }
 

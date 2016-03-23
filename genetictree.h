@@ -57,6 +57,7 @@ public:
     QStringList typeStrings;
     void listOfChildren(QList<const GeneticTree::GeneticTreeItem *> &list, const GeneticTreeItem* parent);
     QList<const GeneticTree::GeneticTreeItem *> listOfChildren();
+    void mutateRandomChild(GeneticTree * const tree);
 
     GeneticTree& operator=(const GeneticTree &source);
 private:
@@ -72,6 +73,7 @@ private:
 
     void removeTypeFromList(QList<const GeneticTreeItem *> &list, GeneticTreeItem::Type type);
     void removeTopItemsFromList(QList<const GeneticTreeItem *> &list);
+
 };
 
 #endif // GENETICTREE_H

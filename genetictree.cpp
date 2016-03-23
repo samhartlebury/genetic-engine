@@ -157,12 +157,6 @@ GeneticTree::GeneticTreeItem &GeneticTree::GeneticTreeItem::operator=(const Gene
     operation = source.operation;
     type = source.type;
 
-    // Deallocate our children
-    //    if (child1)
-    //        delete child1;
-    //    if (child2)
-    //        delete child2;
-
     // Deep copy source children
     if (source.child1 && source.child2) {
         // Allocate memory and copy
@@ -234,9 +228,19 @@ void GeneticTree::removeTopItemsFromList(QList<const GeneticTreeItem*> &list)
     QMutableListIterator<const GeneticTreeItem*> i(list);
     while (i.hasNext()) {
         const auto& item = i.next();
-        if (item->depth == 1)
+        if (item->depth == 0)
             i.remove();
     }
+}
+
+void GeneticTree::mutateRandomChild(GeneticTree * const tree)
+{
+    GeneticTreeItem *child = getRandomChildOfTree(tree);
+
+    child->type = GeneticTreeItem::Operator; // For now, just mutate as operator
+    child->operation = GeneticTreeItem::Operations(qrand() % 4); // Choose random operation
+    child->constant = qreal(qrand() % 1000) / 1000;
+    randomChildren(child); // Children can be any type
 }
 
 void GeneticTree::removeTypeFromList(QList<const GeneticTreeItem*> &list, GeneticTreeItem::Type type)
