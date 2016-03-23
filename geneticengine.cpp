@@ -11,8 +11,8 @@ using namespace cv;
 GeneticEngine::GeneticEngine(int argc, char *argv[]) :
     QApplication(argc, argv),
     population(500),
-    breedingPoolSize(200),
-    generations(50),
+    breedingPoolSize(50),
+    generations(10),
     initialDepth(20)
 {
     Q_UNUSED(argc);
@@ -148,11 +148,16 @@ void GeneticEngine::start()
     imshow("target", target);
     target.convertTo(target, CV_32F);
 
-    if (generations > 0)
-        firstGeneration();
-    for (int i = 0; i < (generations - 1); ++i)
-        nextGeneration();
+    ResultsLog logger("/home/sam/results.txt");
 
+    if (generations > 0) {
+        firstGeneration();
+        logger.writeCurrentData(1, bestList);
+    }
+    for (int i = 0; i < (generations - 1); ++i) {
+        nextGeneration();
+        logger.writeCurrentData(i + 2, bestList);
+    }
 
     qDebug() << endl << "Best error"
              << endl << (bestList.at(0)->error / 255) * 100;
@@ -206,4 +211,34 @@ GeneticEngine::GeneticData &GeneticEngine::GeneticData::operator=(const GeneticE
 GeneticEngine::GeneticData::~GeneticData()
 {
     delete program;
+}
+
+GeneticEngine::ResultsLog::ResultsLog(const QString &filePath) :
+    file(filePath)
+{
+    if (!file.open(QIODevice::WriteOnly))
+        Q_ASSERT(false);
+
+    out.setDevice(&file);   // we will serialize the data into the file
+}
+
+void GeneticEngine::ResultsLog::writeCurrentData(int generation, const QList<GeneticData*> &bestList)
+{
+    out << "Generation: " << generation << endl;
+    out << "Best error: " << (bestList.at(0)->error / 255) * 100 << endl;
+    out << "Median error: ";
+
+    if ((bestList.size() % 2) == 0) { // Even number
+        qreal median = (bestList.at(bestList.size() / 2)->error / 255) * 100;
+        out << QString::number(median);
+    } else if (bestList.size() == 1) {
+        out << QString::number((bestList.at(0)->error / 255) * 100);
+    } else { // Odd number
+        qreal median1 = (bestList.at((bestList.size() - 1) / 2)->error / 255) * 100;
+        qreal median2 = (bestList.at((bestList.size() + 1) / 2)->error / 255) * 100;
+        qreal median = (median1 + median2) / 2;
+        out << QString::number(median);
+    }
+
+    out << endl << endl;
 }

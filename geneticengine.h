@@ -2,6 +2,8 @@
 #define GENETICENGINE_H
 
 #include <QApplication>
+#include <QFile>
+#include <QTextStream>
 
 #include "geneticprogram.h"
 
@@ -27,6 +29,14 @@ public:
 
         GeneticData& operator=(const GeneticData &source);
         ~GeneticData();
+    };
+
+    class ResultsLog {
+    public:
+        ResultsLog(const QString &filePath);
+        void writeCurrentData(int generation, const QList<GeneticData*> &bestList);
+        QFile file;
+        QTextStream out;
     };
 
     int population;
